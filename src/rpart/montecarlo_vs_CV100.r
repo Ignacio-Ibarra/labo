@@ -152,4 +152,6 @@ ggplot(salidas, aes(x = tipo, y = desvio, fill=tipo)) +
         axis.title.y = element_text(size = 10, face = "plain"))
 dev.off()
 
+require(dplyr)
 
+salidas %>% group_by(tipo) %>% summarise(desv = sd(desvio))
