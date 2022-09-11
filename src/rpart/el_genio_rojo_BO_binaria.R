@@ -26,7 +26,7 @@ hs  <- makeParamSet(
   makeNumericParam("minsplit" , lower=   100,   upper= 3000 ),
   makeNumericParam("minbucket", lower=   200,   upper= 1000 ),
   makeIntegerParam("maxdepth" , lower=   6L,  upper=   20L),  #la letra L al final significa ENTERO
-  forbidden = quote( minbucket > 0.5*minsplit ) )             # minbuket NO PUEDE ser mayor que la mitad de minsplit
+  forbidden = quote( minbucket >= 0.5*minsplit ) )             # minbuket NO PUEDE ser mayor que la mitad de minsplit
 
 
 #------------------------------------------------------------------------------
@@ -171,8 +171,8 @@ dataset  <- fread("./datasets/competencia1_2022.csv")   #donde entreno
 dataset[ foto_mes==202101, clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
 
 #defino los datos donde entreno
-dtrain  <- dataset[ foto_mes==202101 ]  #defino donde voy a entrenar
-dapply  <- dataset[ foto_mes==202103 ]  #defino donde voy a aplicar el modelo
+dtrain  <- dataset[ foto_mes==202101, ]  #defino donde voy a entrenar
+dapply  <- dataset[ foto_mes==202103, ]  #defino donde voy a aplicar el modelo
 
 #-------------------------------------------------
 #Transformo en Ranking todas las variables definidas en pesos.
@@ -208,11 +208,10 @@ dtrain[ , campo7 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_
 dtrain[ , campo8 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_status) & ctrx_quarter>=38 ) ]
 
 #Ramas derechas
-dtrain[ , campo1 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales <2 ) ]
-dtrain[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ] 
-dtrain[ , campo3 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo >= -36385 ) ]
-dtrain[ , campo4 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo < -36385 ) ]
-
+dapply[ , campo1 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales <2 ) ]
+dapply[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ] 
+dapply[ , campo3 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo >= -36385 ) ]
+dapply[ , campo4 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo < -36385 ) ]
 
 #Ramas izquierdas
 dapply[ , campo5 := as.integer( ctrx_quarter>=14 & ( Visa_status>=8 | is.na(Visa_status) ) & rank_Visa_mpagominimo >= 80344 ) ]
@@ -257,7 +256,7 @@ obj.fun  <- makeSingleObjectiveFunction(
   minimize= FALSE,   #estoy Maximizando la ganancia
   noisy=    TRUE,
   par.set=  hs,
-  has.simple.signature = FALSE   #espia Tomas Delvechio, dejar este parametro asi
+  has.simple.signature = FALSE   
 )
 
 ctrl  <- makeMBOControl( save.on.disk.at.time= 600,  save.file.path= archivo_BO)
@@ -294,7 +293,7 @@ fit.predict <- function(param.list, train.set, test.set){
   
   iteracion <- param.list$iteracion
   
-  modelo <- rpart(formula =  "clase_binaria ~ . -clase_ternaria",
+  modelo <- rpart(formula =  "clase_binaria ~ .  -Visa_mpagado -clase_ternaria",
                   data = train.set,
                   control = param.list[, -"iteracion", with=F])
   cat("Ya entrenó iteracion: ", iteracion)
