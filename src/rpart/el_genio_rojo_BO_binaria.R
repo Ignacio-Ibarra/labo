@@ -5,7 +5,7 @@ gc()             #garbage collection
 
 require("data.table")
 require("rlist")
-
+require(readODS)
 require("rpart")
 require("parallel")
 
@@ -19,7 +19,7 @@ ksemilla_azar  <- c(450473)
 
 #Defino la  Optimizacion Bayesiana
 
-kBO_iter  <- 100   #cantidad de iteraciones de la Optimizacion Bayesiana
+kBO_iter  <- 150   #cantidad de iteraciones de la Optimizacion Bayesiana
 
 hs  <- makeParamSet(
   makeNumericParam("cp"       , lower=  -1.0, upper=    0.1),
@@ -162,7 +162,7 @@ EstimarGanancia  <- function( x )
 #------------------------------------------------------------------------------
 #Aqui empieza el programa
 
-setwd( "~/buckets/b1/" )
+setwd("~/Desktop/EyF 2022") 
 
 #cargo el dataset, aqui debe poner  SU RUTA
 dataset  <- fread("./datasets/competencia1_2022.csv")   #donde entreno
@@ -171,7 +171,8 @@ dataset  <- fread("./datasets/competencia1_2022.csv")   #donde entreno
 dataset[ foto_mes==202101, clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
 
 #defino los datos donde entreno
-dtrain  <- dataset[ foto_mes==202101, ]
+dtrain  <- dataset[ foto_mes==202101 ]  #defino donde voy a entrenar
+dapply  <- dataset[ foto_mes==202103 ]  #defino donde voy a aplicar el modelo
 
 #-------------------------------------------------
 #Transformo en Ranking todas las variables definidas en pesos.
@@ -184,6 +185,11 @@ var.monet <- diccionario[unidad=="pesos", .(campo)]
 dtrain[, paste0("rank_", var.monet$campo) := lapply(.SD, frank),
    .SDcols = var.monet$campo]
 dtrain[, var.monet$campo :=NULL] #remuevo las cols monetarias dejo las ranking
+
+#rankeo en entrenamiento
+dapply[, paste0("rank_", var.monet$campo) := lapply(.SD, frank),
+       .SDcols = var.monet$campo]
+dapply[, var.monet$campo :=NULL] #remuevo las cols monetarias dejo las ranking
 
 #-----------------------------------------
 #Arma Secreta
@@ -201,6 +207,18 @@ dtrain[ , campo6 := as.integer( ctrx_quarter>=14 & ( Visa_status>=8 | is.na(Visa
 dtrain[ , campo7 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_status) & ctrx_quarter <38 ) ]
 dtrain[ , campo8 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_status) & ctrx_quarter>=38 ) ]
 
+#Ramas derechas
+dtrain[ , campo1 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales <2 ) ]
+dtrain[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ] 
+dtrain[ , campo3 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo >= -36385 ) ]
+dtrain[ , campo4 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo < -36385 ) ]
+
+
+#Ramas izquierdas
+dapply[ , campo5 := as.integer( ctrx_quarter>=14 & ( Visa_status>=8 | is.na(Visa_status) ) & rank_Visa_mpagominimo >= 80344 ) ]
+dapply[ , campo6 := as.integer( ctrx_quarter>=14 & ( Visa_status>=8 | is.na(Visa_status) ) & rank_Visa_mpagominimo < 80344) ]
+dapply[ , campo7 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_status) & ctrx_quarter <38 ) ]
+dapply[ , campo8 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_status) & ctrx_quarter>=38 ) ]
 
 #-------------------------------------------------
 
@@ -208,12 +226,12 @@ dtrain[ , campo8 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_
 #creo la carpeta donde va el experimento
 # HT  representa  Hiperparameter Tuning
 dir.create( "./exp/",  showWarnings = FALSE ) 
-dir.create( "./exp/HT1109/", showWarnings = FALSE )
-setwd("./exp/HT1109/")   #Establezco el Working Directory DEL EXPERIMENTO
+dir.create( "./exp/HT1109-2/", showWarnings = FALSE )
+setwd("./exp/HT1109-2/")   #Establezco el Working Directory DEL EXPERIMENTO
 
 #defino los archivos donde guardo los resultados de la Bayesian Optimization
-archivo_log  <- "HT1109.txt"
-archivo_BO   <- "HT1109.RDATA"
+archivo_log  <- "HT1109-2.txt"
+archivo_BO   <- "HT1109-2.RDATA"
 
 #leo si ya existe el log, para retomar en caso que se se corte el programa
 GLOBAL_iteracion  <- 0
@@ -223,7 +241,6 @@ if( file.exists(archivo_log) )
   tabla_log  <- fread( archivo_log )
   GLOBAL_iteracion  <- nrow( tabla_log )
 }
-
 
 
 
@@ -257,3 +274,64 @@ if( !file.exists( archivo_BO ) ) {
                control= ctrl)
   
 } else  run  <- mboContinue( archivo_BO )   #retomo en caso que ya exista
+
+
+#----------------------------------------------------------
+
+# USO TOP N EXPERIMENTOS PARA KAGGLE 
+setwd("~/Desktop/EyF 2022") 
+
+
+experimentos <- fread("./exp/HT1109-2/HT1109-2.txt")
+
+topN <- 5
+correr <- experimentos[order(-ganancia), head(.SD, topN)][, .(cp, minsplit, minbucket, maxdepth, iteracion)]
+
+
+#Función para generar archivos para kaggle. 
+
+fit.predict <- function(param.list, train.set, test.set){
+  
+  iteracion <- param.list$iteracion
+  
+  modelo <- rpart(formula =  "clase_binaria ~ . -clase_ternaria",
+                  data = train.set,
+                  control = param.list[, -"iteracion", with=F])
+  cat("Ya entrenó iteracion: ", iteracion)
+  prediccion  <- predict(modelo,   
+                         test.set,  
+                         type= "prob")
+  
+  #agrego a dapply una columna nueva que es la probabilidad de BAJA+2
+  dfinal  <- copy( test.set[ , list(numero_de_cliente) ] )
+  dfinal[ , prob_SI := prediccion[ , "SI"] ]
+  
+  
+  # por favor cambiar por una semilla propia
+  # que sino el Fiscal General va a impugnar la prediccion
+  set.seed(635837)  
+  dfinal[ , azar := runif( nrow(test.set) ) ]
+  
+  # ordeno en forma descentente, y cuando coincide la probabilidad, al azar
+  setorder( dfinal, -prob_SI, azar )
+  
+  dia.mes <- format(Sys.Date(),"%d%m")
+  kaggle.folder <- paste0("KA", dia.mes)
+  dir.create( paste0("./exp/", kaggle.folder) )
+  
+  for( corte  in  c( 8500, 9000, 9500) )
+  {
+    #le envio a los  corte  mejores,  de mayor probabilidad de prob_SI
+    dfinal[ , Predicted := 0L ]
+    dfinal[ 1:corte , Predicted := 1L ]
+    
+    
+    fwrite( dfinal[ , list(numero_de_cliente, Predicted) ], #solo los campos para Kaggle
+            file= paste0( "./exp/", kaggle.folder,"/",kaggle.folder,"_it_",iteracion,"_corte_", corte, "_binaria_FeatEng.csv"),
+            sep=  "," )
+  }
+  
+}
+
+
+lapply(1:topN, function(x) fit.predict(correr[x], dtrain, dapply))
