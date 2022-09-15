@@ -8,6 +8,7 @@ require("rlist")
 require(readODS)
 require("rpart")
 require("parallel")
+require(dplyr) #mil perdones!!!
 
 #paquetes necesarios para la Bayesian Optimization
 require("DiceKriging")
@@ -19,7 +20,7 @@ ksemilla_azar  <- c(450473)
 
 #Defino la  Optimizacion Bayesiana
 
-kBO_iter  <- 150   #cantidad de iteraciones de la Optimizacion Bayesiana
+kBO_iter  <- 100   #cantidad de iteraciones de la Optimizacion Bayesiana
 
 hs  <- makeParamSet(
   makeNumericParam("cp"       , lower=  -1.0, upper=    0.1),
@@ -78,7 +79,7 @@ ArbolSimple  <- function( fold_test, data, param )
   #param2$minbucket  <- as.integer( round( 2^param$minbucket ) )
   
   #genero el modelo
-  modelo  <- rpart("clase_binaria ~ .  -Visa_mpagado -clase_ternaria",
+  modelo  <- rpart("clase_binaria ~ .  -clase_ternaria",
                    data= data[ fold != fold_test, ],  #entreno en todo MENOS el fold_test que uso para testing
                    xval= 0,
                    control= param2 )
@@ -174,7 +175,7 @@ dataset[ foto_mes==202101, clase_binaria :=  ifelse( clase_ternaria=="CONTINUA",
 dtrain  <- dataset[ foto_mes==202101, ]  #defino donde voy a entrenar
 dapply  <- dataset[ foto_mes==202103, ]  #defino donde voy a aplicar el modelo
 
-#-------------------------------------------------
+# #-------------------------------------------------
 #Transformo en Ranking todas las variables definidas en pesos.
 
 diccionario <- read_ods("./datasets/DiccionarioDatos.ods")
@@ -184,19 +185,19 @@ var.monet <- diccionario[unidad=="pesos", .(campo)]
 #rankeo en entrenamiento
 dtrain[, paste0("rank_", var.monet$campo) := lapply(.SD, frank),
    .SDcols = var.monet$campo]
-dtrain[, var.monet$campo :=NULL] #remuevo las cols monetarias dejo las ranking
+dtrain <- dtrain %>% select(!var.monet$campo)
 
 #rankeo en entrenamiento
 dapply[, paste0("rank_", var.monet$campo) := lapply(.SD, frank),
        .SDcols = var.monet$campo]
-dapply[, var.monet$campo :=NULL] #remuevo las cols monetarias dejo las ranking
+dapply <- dapply %>% select(!var.monet$campo)#remuevo las cols monetarias dejo las ranking
 
 #-----------------------------------------
 #Arma Secreta
 
 #Ramas derechas
 dtrain[ , campo1 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales <2 ) ]
-dtrain[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ] 
+dtrain[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ]
 dtrain[ , campo3 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo >= -36385 ) ]
 dtrain[ , campo4 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo < -36385 ) ]
 
@@ -209,7 +210,7 @@ dtrain[ , campo8 := as.integer( ctrx_quarter>=14 & Visa_status <8 & !is.na(Visa_
 
 #Ramas derechas
 dapply[ , campo1 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales <2 ) ]
-dapply[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ] 
+dapply[ , campo2 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo < -24190 & cprestamos_personales>=2 ) ]
 dapply[ , campo3 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo >= -36385 ) ]
 dapply[ , campo4 := as.integer( ctrx_quarter <14 & rank_mcuentas_saldo >= -24190 & rank_mcuentas_saldo < -36385 ) ]
 
@@ -293,7 +294,7 @@ fit.predict <- function(param.list, train.set, test.set){
   
   iteracion <- param.list$iteracion
   
-  modelo <- rpart(formula =  "clase_binaria ~ .  -Visa_mpagado -clase_ternaria",
+  modelo <- rpart(formula =  "clase_binaria ~ .  -clase_ternaria",
                   data = train.set,
                   control = param.list[, -"iteracion", with=F])
   cat("Ya entrenó iteracion: ", iteracion)
