@@ -16,9 +16,9 @@ dplyr_stratified <- function(df, percent, ...){
   out<-df %>% group_by(!!!columns)  %>% slice( sample(1:n(), percent*n())) 
 }
 
-muestra<-dplyr_stratified(data, 0.5, foto_mes, clase_ternaria)
+muestra<-dplyr_stratified(data, 0.25, foto_mes, clase_ternaria)
 
-fwrite(muestra, "../buckets/b2/muestra_comp2.csv", row.names = F)
+fwrite(muestra, "../buckets/b1/datasets/muestra25_comp2.csv", row.names = F)
 
 
 
