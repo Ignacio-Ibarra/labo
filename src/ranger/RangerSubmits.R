@@ -44,7 +44,7 @@ fit.predict <- function(param.list, train.set, test.set){
                      mtry=          param.list$mtry,
                      min.node.size= param.list$min.node.size,
                      max.depth=     param.list$max.depth
-                     ,class.weights= c( 1,40, 1)  #siguiendo con la idea de Maite San Martin
+                     #,class.weights= c( 1,40, 1)  #siguiendo con la idea de Maite San Martin
   )
   
   cat("Ya entrenó iteracion: ", iteracion)
