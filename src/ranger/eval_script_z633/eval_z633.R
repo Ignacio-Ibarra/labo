@@ -22,7 +22,7 @@ exp633 <- fread("./exp/HT6330/HT6330.txt")
 
 
 p1 <- ggplot(exp633, aes(x=iteracion, y=ganancia))+geom_line()
-bins <- 4
+bins <- 5
 exp633$gan.bin <- quantcut(exp633$ganancia, q = bins, labels = paste0(c("level"),1:bins))
 cols <- c("num.trees","max.depth","min.node.size","mtry")
 pca <- prcomp(exp633[, ..cols], scale=T)
