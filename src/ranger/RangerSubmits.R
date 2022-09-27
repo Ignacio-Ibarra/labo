@@ -20,7 +20,7 @@ correr <- experimentos[order(-ganancia), head(.SD, topN)][, .(num.trees, max.dep
 dataset  <- fread("./datasets/competencia2_2022.csv.gz", stringsAsFactors= TRUE) 
 
 #paso a trabajar con clase binaria POS={BAJA+2}   NEG={BAJA+1, CONTINUA}
-dataset[ , clase_binaria := as.factor(ifelse( clase_ternaria=="BAJA+2", "POS", "NEG" )) ]
+dataset[ , clase_binaria := as.factor(ifelse( clase_ternaria=="BAJA+2", "SI", "NO" )) ]
 dataset[ , clase_ternaria := NULL ]  #elimino la clase_ternaria, ya no la necesito
 
 
@@ -37,20 +37,20 @@ fit.predict <- function(param.list, train.set, test.set){
   
   iteracion <- param.list$iteracion
   
-  modelo  <- ranger( formula= "clase_binaria ~ .",
+  modelo  <- ranger( formula= "clase_binaria ~ . ",
                      data=  train.set, 
                      probability=   TRUE,  #para que devuelva las probabilidades
                      num.trees=     param.list$num.trees,
                      mtry=          param.list$mtry,
                      min.node.size= param.list$min.node.size,
                      max.depth=     param.list$max.depth
-                     #,class.weights= c( 1,40, 1)  #siguiendo con la idea de Maite San Martin
-                  )
+                     ,class.weights= c( 1,40, 1)  #siguiendo con la idea de Maite San Martin
+  )
   
   cat("Ya entrenó iteracion: ", iteracion)
   
   prediccion  <- predict(modelo,   
-                         test.set)
+                         dapply)$predictions
   
   #agrego a dapply una columna nueva que es la probabilidad de BAJA+2
   dfinal  <- copy( test.set[ , list(numero_de_cliente) ] )
@@ -80,9 +80,10 @@ fit.predict <- function(param.list, train.set, test.set){
     
     fwrite( dfinal[ , list(numero_de_cliente, Predicted) ], #solo los campos para Kaggle
             file= paste0( "./exp/", kaggle.folder,"/",kaggle.folder,"_it_",iteracion,"_corte_", corte, ".csv"),
-    sep=  "," )
+            sep=  "," )
   }
   
 }
 
 lapply(1:topN, function(x) fit.predict(correr[x], dtrain, dapply))
+
