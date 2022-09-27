@@ -50,8 +50,7 @@ fit.predict <- function(param.list, train.set, test.set){
   cat("Ya entrenó iteracion: ", iteracion)
   
   prediccion  <- predict(modelo,   
-                         test.set,  
-                         type= "prob")
+                         test.set)
   
   #agrego a dapply una columna nueva que es la probabilidad de BAJA+2
   dfinal  <- copy( test.set[ , list(numero_de_cliente) ] )
