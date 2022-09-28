@@ -9,11 +9,11 @@ require("lightgbm")
 require("xgboost")
 
 # Poner la carpeta de la materia de SU computadora local
-setwd("~/buckets/b1/")
-
+# setwd("~/buckets/b1/")
+setwd(".")
 
 # Cargamos los datasets y nos quedamos solo con 202101 y 202103
-dataset <- fread("./exp/FE7110/dataset_7110.csv.gz")   #poner acá el dataset de FE_basico
+dataset <- fread("./datasets/datasets_muestra25_comp2.csv")   #poner acá el dataset de FE_basico
 marzo <- dataset[foto_mes == 202103]
 mayo <- dataset[foto_mes == 202105]
 rm(dataset)
@@ -89,7 +89,8 @@ mayo.final  <- xgb.create.features(model = xgb_model, data.matrix(mayo))[, final
 rm(mayo)
 
 final <- rbind(marzo.final, mayo.final)
-final.df <- as.data.frame(as.matrix(final))
+final.df <- as.data.table(as.data.frame(as.matrix(final)))
+final.df[foto_mes == 202103, clase_ternaria := clase_real]
 rm(final)
 
 dia.mes <- format(Sys.Date(),"%d%m")
