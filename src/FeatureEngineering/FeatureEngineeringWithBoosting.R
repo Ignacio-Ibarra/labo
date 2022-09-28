@@ -9,7 +9,7 @@ require("lightgbm")
 require("xgboost")
 
 # Poner la carpeta de la materia de SU computadora local
-setwd("~/buckets/b1/") 
+setwd("~/buckets/b1/")
 
 
 # Cargamos los datasets y nos quedamos solo con 202101 y 202103
@@ -45,14 +45,14 @@ params <- list(
 xgb_model <- xgb.train(params = params, data = dtrain, nrounds = 1)
 
 
+new_features <- xgb.create.features(model = xgb_model, data.matrix(marzo))
+new_features <- as.data.table(as.data.frame(as.matrix(new_features)))
+
 #Le sumamos canaritos
 set.seed(612337)
 for (i in 1:20)  {
-  marzo[, paste0("canarito", i) := runif(nrow(marzo))]
-  mayo[, paste0("canarito", i) := runif(nrow(mayo))]
+  new_features[, paste0("canarito", i) := runif(nrow(new_features))]
 }
-
-new_features <- xgb.create.features(model = xgb_model, data.matrix(marzo))
 
 
 ## ---------------------------
@@ -83,7 +83,7 @@ important.new.features <- important.features[grep("V\\d+", important.features)]
 
 final.cols <- append(x.cols, important.new.features)
 
-marzo.final <- new_features[, final.cols]
+marzo.final <- xgb.create.features(model = xgb_model, data.matrix(marzo))[, final.cols] 
 rm(marzo)
 mayo.final  <- xgb.create.features(model = xgb_model, data.matrix(mayo))[, final.cols] 
 rm(mayo)
