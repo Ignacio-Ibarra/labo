@@ -28,17 +28,19 @@ exp7231 <- fread("./exp/HT7231/HT7231.txt")
 # get_min_loss(exp7231$ganancia, 20)
 
 
-p1 <- ggplot(exp7231, aes(x=iteracion, y=ganancia))+geom_line()+ylim(2.65e+07, 2.8e+07)
+p1 <- ggplot(exp7231, aes(x=iteracion, y=ganancia))+geom_line() #+ylim(2.65e+07, 2.8e+07)
 
 cols <- c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","envios","ganancia","iteracion")
 eval.params <- c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","envios")
 
 #descarto lo que no me sirve
-eval.df <- exp7231[ganancia>= 2.65e+07, ..cols]
+eval.df <- exp7231[ganancia>= 2.65e+07, ..cols] #elijo este limite para descartar
 
 #evaluo
 bins <- 4
 eval.df$gan.bin <- quantcut(eval.df$ganancia, q = bins, labels = paste0(c("level"),1:bins))
+
+eval.df[gan.bin=="level4",]
 
 pca <- prcomp(eval.df[, ..eval.params], scale=T)
 
@@ -58,8 +60,8 @@ myTable <- tableGrob(
   rows = NULL, 
   theme = ttheme_default(core = list(bg_params = list(fill = "grey99")))
 )
-png("./work/bins.png")
+png("./work/bins_BO.png")
 grid.draw(myTable)
 dev.off()
 
-as_image(tab1)
+
