@@ -10,8 +10,10 @@
 rm( list=ls() )  #Borro todos los objetos
 gc()   #Garbage Collection
 
+install.packages("gtools")
 require("data.table")
 require("lightgbm")
+require("gtools")
 
 #setwd("~/buckets/b1/")
 setwd("~/Desktop/EyF 2022")
