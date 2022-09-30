@@ -37,7 +37,7 @@ hs <- makeParamSet(
   makeIntegerParam("min_data_in_leaf", lower=    500   , upper=  2000L),
   makeIntegerParam("num_leaves",       lower=   16L   , upper=  256L),
   makeIntegerParam("envios",           lower= 8000L   , upper= 9500L),
-  makeIntegerParam("max_bin",          lower= 15L   , upper= 30L),
+  #makeIntegerParam("max_bin",          lower= 15L   , upper= 30L),
   makeNumericParam("lambda_l1",        lower= 0  , upper=   50),
   makeNumericParam("lambda_l2",        lower= 0  , upper=   50)
 )
@@ -134,7 +134,7 @@ EstimarGanancia_lightgbm  <- function( x )
                           min_gain_to_split= 0.0, #por ahora, lo dejo fijo
                           #lambda_l1= 0.0,         #por ahora, lo dejo fijo
                           #lambda_l2= 0.0,         #por ahora, lo dejo fijo
-                          #max_bin= 31,            #por ahora, lo dejo fijo
+                          max_bin= 31,            #por ahora, lo dejo fijo
                           num_iterations= 9999,   #un numero muy grande, lo limita early_stopping_rounds
                           force_row_wise= TRUE,   #para que los alumnos no se atemoricen con tantos warning
                           seed= PARAM$hyperparametertuning$semilla_azar
