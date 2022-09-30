@@ -114,20 +114,20 @@ setorder( tb_entrega, -prob )
 
 #genero archivos con los  "envios" mejores
 #deben subirse "inteligentemente" a Kaggle para no malgastar submits
-cortes <- seq( 5000, 12000, by=500 )
+cortes <- seq( 8000, 10000, by=500 )
 for( envios  in  cortes )
 {
   tb_entrega[  , Predicted := 0L ]
   tb_entrega[ 1:envios, Predicted := 1L ]
   
   fwrite( tb_entrega[ , list(numero_de_cliente, Predicted)], 
-          file= paste0(  PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
+          file= paste0(  FIXED_PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
           sep= "," )
 }
 }
 
 
-lapply(1:length(correr), function(i) fit.predict(correr[i], dtrain, dapply))
+lapply(1:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
 
 #--------------------------------------
 
