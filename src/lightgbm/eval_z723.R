@@ -26,10 +26,23 @@ exp7231 <- fread("./exp/HT7231/HT7231.txt")
 #   }
 # 
 # get_min_loss(exp7231$ganancia, 20)
-
+# 
+# subs <- c(
+#           "num_iterations",
+#           "learning_rate",
+#            "feature_fraction",
+#           "min_data_in_leaf",
+#           "num_leaves",
+#           "envios",
+#           "ganancia"
+#           )
+# reg <- exp7231[ , ..subs]
+# cor(reg %>% select(!ganancia))
+# mod1 <- lm(ganancia ~ num_leaves * min_data_in_leaf, data = reg)
+# summary(mod1)
 
 p1 <- ggplot(exp7231, aes(x=iteracion, y=ganancia))+geom_line() #+ylim(2.65e+07, 2.8e+07)
-
+ggplot(reg, aes(x=learning_rate, y=ganancia))+geom_point()
 cols <- c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","envios","ganancia","iteracion")
 eval.params <- c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","envios")
 
