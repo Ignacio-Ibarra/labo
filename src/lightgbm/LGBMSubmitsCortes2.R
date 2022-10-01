@@ -23,10 +23,10 @@ setwd("~/buckets/b1/")
 bayesian.opt.output <- "./exp/HT3009/HT3009.txt"
 
 experimentos <- fread(bayesian.opt.output)
-cantidad <- min(c(round(0.2*nrow(experimentos)),20))
+cantidad <- min(c(round(0.3*nrow(experimentos)),20))
 
 cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","lambda_l1","lambda_l2", "iteracion")
-#cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
+cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
 
 correr <- experimentos[order(-ganancia), head(.SD, cantidad)][,..cols]
 
@@ -37,7 +37,7 @@ kaggle.folder <- paste0("KA", dia.mes)
 
 FIXED_PARAM <- list()
 FIXED_PARAM$experimento  <- kaggle.folder
-# FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
+# FIXED_PARAM$experimento  <- "KA3009"
 FIXED_PARAM$input$dataset       <- "./exp/FE2809/FE2809_dataset.csv.gz" #contiene Feat.Eng
 # FIXED_PARAM$input$dataset       <- "./datasets/datasets_muestra25_comp2.csv" #muestra aleatoria en local de prueba
 FIXED_PARAM$input$training      <- c( 202103 )
@@ -133,11 +133,14 @@ for( envios  in  cortes )
 }
 
 files.in <- list.files(folder.path, pattern = "*.csv")
-N = length(unique(str_extract(files.in, "KA\\d{4}_\\d{2}")))+1
+all.iters <- correr$iteracion
+iters.runned  <- as.integer(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
+falta.correr <- setdiff(all.iters, iters.runned)
 
-lapply(N:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
+lapply(falta.correr, function(iter) fit.predict(correr[iteracion==iter, ], dtrain, dapply))
 
 #--------------------------------------
 
 quit( save= "no" )
+
 
