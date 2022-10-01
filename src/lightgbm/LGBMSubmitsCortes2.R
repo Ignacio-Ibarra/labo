@@ -19,13 +19,13 @@ setwd("~/buckets/b1/")
 #setwd("~/Desktop/EyF 2022")
 
 
-bayesian.opt.output <- "./exp/HT7231/HT7231.txt"
+bayesian.opt.output <- "./exp/HT7231/HT3009.txt"
 
 experimentos <- fread(bayesian.opt.output)
 cantidad <- min(c(round(0.2*nrow(experimentos)),20))
 
-#cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","lambda_l1","lambda_l2", "iteracion")
-cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
+cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","lambda_l1","lambda_l2", "iteracion")
+#cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
 
 correr <- experimentos[order(-ganancia), head(.SD, cantidad)][,..cols]
 
@@ -35,10 +35,10 @@ dir.create( "./exp/" )
 kaggle.folder <- paste0("KA", dia.mes)
 
 FIXED_PARAM <- list()
-FIXED_PARAM$experimento  <- kaggle.folder
-# FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
+#FIXED_PARAM$experimento  <- kaggle.folder
+FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
 FIXED_PARAM$input$dataset       <- "./exp/FE2809/FE2809_dataset.csv.gz" #contiene Feat.Eng
-FIXED_PARAM$input$dataset       <- "./datasets/datasets_muestra25_comp2.csv" #muestra aleatoria en local de prueba
+# FIXED_PARAM$input$dataset       <- "./datasets/datasets_muestra25_comp2.csv" #muestra aleatoria en local de prueba
 FIXED_PARAM$input$training      <- c( 202103 )
 FIXED_PARAM$input$future        <- c( 202105 )
 # PARAM$finalmodel$semilla           <- 635837
@@ -58,9 +58,9 @@ dataset[ , clase01 := ifelse( clase_ternaria %in%  c("BAJA+2","BAJA+1"), 1L, 0L)
 campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01") )
 
 
-# dir.create( "./exp/",  showWarnings = FALSE ) 
-dir.create( paste0("./exp/", FIXED_PARAM$experimento, "/" ), showWarnings = FALSE )
-#setwd( paste0("./exp/", FIXED_PARAM$experimento, "/" ) )
+folder.path <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+dir.create( folder.path, showWarnings = FALSE )
+
 #--------------------------------------
 
 #establezco donde entreno
@@ -87,7 +87,9 @@ modelo  <- lgb.train( data= train.set,
                                    num_leaves=         param.list$num_leaves,
                                    min_data_in_leaf=   param.list$min_data_in_leaf,
                                    feature_fraction=   param.list$feature_fraction,
-                                   seed= 635837,
+                                   lambda_l1 =         param.list$lambda_l1,
+                                   lambda_l2 =         param.list$lambda_l2,
+                                   seed=               635837,
                                    feature_pre_filter= FALSE
                       )
 )
@@ -120,17 +122,18 @@ for( envios  in  cortes )
 {
   tb_entrega[  , Predicted := 0L ]
   tb_entrega[ 1:envios, Predicted := 1L ]
-  folder <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
-  fwrite( tb_entrega[ , list(numero_de_cliente, Predicted)], 
-          file= paste0(  folder, FIXED_PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
+  
+  fwrite( tb_entrega[ ,list(numero_de_cliente, Predicted)], 
+          file= paste0(folder.path, FIXED_PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
           sep= "," )
 }
 
 
 }
 
+N = length(list.files(folder.path, pattern = "*.csv"))+1
 
-lapply(1:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
+lapply(N:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
 
 #--------------------------------------
 
