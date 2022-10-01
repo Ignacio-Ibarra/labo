@@ -14,12 +14,13 @@ gc()   #Garbage Collection
 require("data.table")
 require("lightgbm")
 require("gtools")
+require("stringr")
 
 setwd("~/buckets/b1/")
-#setwd("~/Desktop/EyF 2022")
+# setwd("~/Desktop/EyF 2022")
 
 
-bayesian.opt.output <- "./exp/HT7231/HT3009.txt"
+bayesian.opt.output <- "./exp/HT3009/HT3009.txt"
 
 experimentos <- fread(bayesian.opt.output)
 cantidad <- min(c(round(0.2*nrow(experimentos)),20))
@@ -35,8 +36,8 @@ dir.create( "./exp/" )
 kaggle.folder <- paste0("KA", dia.mes)
 
 FIXED_PARAM <- list()
-#FIXED_PARAM$experimento  <- kaggle.folder
-FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
+FIXED_PARAM$experimento  <- kaggle.folder
+# FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
 FIXED_PARAM$input$dataset       <- "./exp/FE2809/FE2809_dataset.csv.gz" #contiene Feat.Eng
 # FIXED_PARAM$input$dataset       <- "./datasets/datasets_muestra25_comp2.csv" #muestra aleatoria en local de prueba
 FIXED_PARAM$input$training      <- c( 202103 )
@@ -131,7 +132,8 @@ for( envios  in  cortes )
 
 }
 
-N = length(list.files(folder.path, pattern = "*.csv"))+1
+files.in <- list.files(folder.path, pattern = "*.csv")
+N = length(unique(str_extract(files.in, "KA\\d{4}_\\d{2}")))+1
 
 lapply(N:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
 
