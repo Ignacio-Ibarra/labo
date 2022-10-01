@@ -22,7 +22,7 @@ setwd("~/buckets/b1/")
 bayesian.opt.output <- "./exp/HT7231/HT7231.txt"
 
 experimentos <- fread(bayesian.opt.output)
-cantidad <- min(c(round(0.1*nrow(experimentos)),20))
+cantidad <- min(c(round(0.2*nrow(experimentos)),20))
 
 #cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","lambda_l1","lambda_l2", "iteracion")
 cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
