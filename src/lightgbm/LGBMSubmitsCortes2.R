@@ -132,6 +132,7 @@ for( envios  in  cortes )
 
 }
 
+#Esto sirve para poder ejecurtar este script y que solo corra lo que falta. 
 files.in <- list.files(folder.path, pattern = "*.csv")
 all.iters <- correr$iteracion
 iters.runned  <- as.integer(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
