@@ -120,7 +120,7 @@ cppFunction('NumericVector fhistC(NumericVector pcolumna, IntegerVector pdesde )
 #La funcionalidad de ratioavg es autoria de  Daiana Sparta,  UAustral  2021
 
 TendenciaYmuchomas  <- function( dataset, cols, ventana=6, tendencia=TRUE, minimo=TRUE, maximo=TRUE, promedio=TRUE, 
-                                 ratioavg=FALSE, ratiomax=FALSE)
+                                 ratioavg=TRUE, ratiomax=TRUE)
 {
   gc()
   #Esta es la cantidad de meses que utilizo para la historia
