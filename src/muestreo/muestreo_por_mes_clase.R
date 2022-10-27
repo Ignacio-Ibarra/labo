@@ -8,8 +8,8 @@
 require(data.table)
 require(dplyr)
 
-setwd("~/labo")
-data <- fread("../buckets/b1/datasets/competencia2_2022.csv.gz")
+setwd("~/buckets/b1/")
+data <- fread("./exp/FE2809/FE2809_dataset.csv.gz")
 
 dplyr_stratified <- function(df, percent, ...){
   columns<-enquos(...)
@@ -18,7 +18,7 @@ dplyr_stratified <- function(df, percent, ...){
 
 muestra<-dplyr_stratified(data, 0.25, foto_mes, clase_ternaria)
 
-fwrite(muestra, "../buckets/b1/datasets/muestra25_comp2.csv", row.names = F)
+fwrite(muestra, "./datasets/muestra252_comp2.csv", row.names = F)
 
 
 
