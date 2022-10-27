@@ -1,0 +1,512 @@
+campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01") )
+# dir.create( "./exp/",  showWarnings = FALSE )
+dir.create( paste0("./exp/", FIXED_PARAM$experimento, "/" ), showWarnings = FALSE )
+setwd( paste0("./exp/", FIXED_PARAM$experimento, "/" ) )
+#--------------------------------------
+#establezco donde entreno
+dataset[ , train  := 0L ]
+dataset[ foto_mes %in% FIXED_PARAM$input$training, train  := 1L ]
+#dejo los datos en el formato que necesita LightGBM
+dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ train==1L, campos_buenos, with=FALSE]),
+label= dataset[ train==1L, clase01] )
+#aplico el modelo a los datos sin clase
+dapply  <- dataset[ foto_mes== FIXED_PARAM$input$future ]
+fit.predict = function(param.list, train.set, test.set){
+iteracion <- param.list$iteracion
+#genero el modelo
+#estos hiperparametros  salieron de una laaarga Optmizacion Bayesiana
+modelo  <- lgb.train( data= train.set,
+param= list( objective=          "binary",
+max_bin=            31, #lo mantengo fijo
+learning_rate=      param.list$learning_rate,
+num_iterations=     param.list$num_iterations,
+num_leaves=         param.list$num_leaves,
+min_data_in_leaf=   param.list$min_data_in_leaf,
+feature_fraction=   param.list$feature_fraction,
+seed= 635837,
+feature_pre_filter= FALSE
+)
+)
+#aplico el modelo a los datos nuevos
+prediccion  <- predict( modelo,
+data.matrix( test.set[, campos_buenos, with=FALSE ])                                 )
+#genero la tabla de entrega
+tb_entrega  <-  test.set[ , list( numero_de_cliente, foto_mes ) ]
+tb_entrega[  , prob := prediccion ]
+# #grabo las probabilidad del modelo
+# fwrite( tb_entrega,
+#         file= "prediccion.txt",
+#         sep= "\t" )
+#ordeno por probabilidad descendente
+setorder( tb_entrega, -prob )
+#genero archivos con los  "envios" mejores
+#deben subirse "inteligentemente" a Kaggle para no malgastar submits
+cortes <- seq( 8500, 9000, by=125 )
+for( envios  in  cortes )
+{
+tb_entrega[  , Predicted := 0L ]
+tb_entrega[ 1:envios, Predicted := 1L ]
+fwrite( tb_entrega[ , list(numero_de_cliente, Predicted)],
+file= paste0(  FIXED_PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
+sep= "," )
+}
+cat(paste(iteracion,"\n"), file=output.txt, append=TRUE)
+}
+lapply(1:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
+getwd()
+FIXED_PARAM$experimento
+# para correr el Google Cloud
+#   8 vCPU
+#  64 GB memoria RAM
+# 256 GB espacio en disco
+# son varios archivos, subirlos INTELIGENTEMENTE a Kaggle
+#limpio la memoria
+rm( list=ls() )  #Borro todos los objetos
+gc()   #Garbage Collection
+#install.packages("gtools")
+require("data.table")
+require("lightgbm")
+require("gtools")
+#setwd("~/buckets/b1/")
+setwd("~/Desktop/EyF 2022")
+bayesian.opt.output <- "./exp/HT7231/HT7231.txt"
+output.txt <- "./exp/HT7231/corridas.txt"
+if (!file.exists(output.txt)) cat("iteracion\n", file=output.txt)
+experimentos <- fread(bayesian.opt.output)
+cantidad <- min(c(round(0.1*nrow(experimentos)),20))
+#cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves","lambda_l1","lambda_l2", "iteracion")
+cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
+correr <- experimentos[order(-ganancia), head(.SD, cantidad)][,..cols]
+dia.mes <- format(Sys.Date(),"%d%m")
+dir.create( "./exp/" )
+kaggle.folder <- paste0("KA", dia.mes)
+FIXED_PARAM <- list()
+# FIXED_PARAM$experimento  <- kaggle.folder
+FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
+# FIXED_PARAM$input$dataset       <- "./exp/FE2809/FE2809_dataset.csv.gz" #contiene Feat.Eng
+FIXED_PARAM$input$dataset       <- "./datasets/datasets_muestra25_comp2.csv" #muestra aleatoria en local de prueba
+FIXED_PARAM$input$training      <- c( 202103 )
+FIXED_PARAM$input$future        <- c( 202105 )
+# PARAM$finalmodel$semilla           <- 635837
+#cargo el dataset donde voy a entrenar
+dataset  <- fread(FIXED_PARAM$input$dataset, stringsAsFactors= TRUE)
+#paso la clase a binaria que tome valores {0,1}  enteros
+#set trabaja con la clase  POS = { BAJA+1, BAJA+2 }
+#esta estrategia es MUY importante
+dataset[ , clase01 := ifelse( clase_ternaria %in%  c("BAJA+2","BAJA+1"), 1L, 0L) ]
+#--------------------------------------
+#los campos que se van a utilizar
+campos_buenos  <- setdiff( colnames(dataset), c("clase_ternaria","clase01") )
+# dir.create( "./exp/",  showWarnings = FALSE )
+dir.create( paste0("./exp/", FIXED_PARAM$experimento, "/" ), showWarnings = FALSE )
+#setwd( paste0("./exp/", FIXED_PARAM$experimento, "/" ) )
+#--------------------------------------
+#establezco donde entreno
+dataset[ , train  := 0L ]
+dataset[ foto_mes %in% FIXED_PARAM$input$training, train  := 1L ]
+#dejo los datos en el formato que necesita LightGBM
+dtrain  <- lgb.Dataset( data= data.matrix(  dataset[ train==1L, campos_buenos, with=FALSE]),
+label= dataset[ train==1L, clase01] )
+#aplico el modelo a los datos sin clase
+dapply  <- dataset[ foto_mes== FIXED_PARAM$input$future ]
+fit.predict = function(param.list, train.set, test.set){
+iteracion <- param.list$iteracion
+#genero el modelo
+#estos hiperparametros  salieron de una laaarga Optmizacion Bayesiana
+modelo  <- lgb.train( data= train.set,
+param= list( objective=          "binary",
+max_bin=            31, #lo mantengo fijo
+learning_rate=      param.list$learning_rate,
+num_iterations=     param.list$num_iterations,
+num_leaves=         param.list$num_leaves,
+min_data_in_leaf=   param.list$min_data_in_leaf,
+feature_fraction=   param.list$feature_fraction,
+seed= 635837,
+feature_pre_filter= FALSE
+)
+)
+#aplico el modelo a los datos nuevos
+prediccion  <- predict( modelo,
+data.matrix( test.set[, campos_buenos, with=FALSE ])                                 )
+#genero la tabla de entrega
+tb_entrega  <-  test.set[ , list( numero_de_cliente, foto_mes ) ]
+tb_entrega[  , prob := prediccion ]
+# #grabo las probabilidad del modelo
+# fwrite( tb_entrega,
+#         file= "prediccion.txt",
+#         sep= "\t" )
+#ordeno por probabilidad descendente
+setorder( tb_entrega, -prob )
+#genero archivos con los  "envios" mejores
+#deben subirse "inteligentemente" a Kaggle para no malgastar submits
+cortes <- seq( 8500, 9000, by=125 )
+for( envios  in  cortes )
+{
+tb_entrega[  , Predicted := 0L ]
+tb_entrega[ 1:envios, Predicted := 1L ]
+folder <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+fwrite( tb_entrega[ , list(numero_de_cliente, Predicted)],
+file= paste0(  folder, FIXED_PARAM$experimento,"_", iteracion, "_", envios, ".csv" ),
+sep= "," )
+}
+cat(paste0(iteracion,"\n"), file=output.txt, append=TRUE)
+}
+lapply(1:nrow(correr), function(i) fit.predict(correr[i], dtrain, dapply))
+correr[, .(iteracion)]
+a <- correr[, .(iteracion)]
+a[-1]
+a[nrow(a)]
+a[nrow(a)]==42
+a[nrow(a),]
+a[nrow(a),][1]
+[a[nrow(a),]]
+a[nrow(a),"iteracion"]
+a[nrow(a),"iteracion"] == 42
+if(a[nrow(a),"iteracion"] == 42) cat("yes")
+list.files(folder.path)
+dia.mes <- format(Sys.Date(),"%d%m")
+dir.create( "./exp/" )
+kaggle.folder <- paste0("KA", dia.mes)
+FIXED_PARAM <- list()
+FIXED_PARAM$experimento  <- kaggle.folder
+# dir.create( "./exp/",  showWarnings = FALSE )
+folder.path <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+dir.create( folder.path, showWarnings = FALSE )
+list.files(folder.path)
+length(list.files(folder.path, pattern = "*.csv"))
+#FIXED_PARAM$experimento  <- kaggle.folder
+FIXED_PARAM$experimento  <- paste0(kaggle.folder,"-bis")
+# dir.create( "./exp/",  showWarnings = FALSE )
+folder.path <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+dir.create( folder.path, showWarnings = FALSE )
+N = length(list.files(folder.path, pattern = "*.csv"))+1
+#Arbol elemental con libreria  rpart
+#Debe tener instaladas las librerias  data.table  ,  rpart  y  rpart.plot
+rm( list=ls() )
+gc()
+#cargo las librerias que necesito
+require("data.table")
+require("rpart")
+require("rpart.plot")
+#Aqui se debe poner la carpeta de la materia de SU computadora local
+setwd("~/Desktop/EyF 2022")  #Establezco el Working Directory
+#cargo el dataset donde voy a entrenar
+dataset  <- fread("./datasets/datasets_muestra252_comp2.csv")
+dataset  <- dataset[  foto_mes %in% c( 202101, 202103 ) ]
+#genero el modelo,  aqui se construye el arbol
+modelo.drifting  <- rpart(formula=    "foto_mes ~ . -clase_ternaria",  #quiero predecir clase_ternaria a partir del resto de las variables
+data=      dataset,  #los datos donde voy a entrenar
+xval=      0,
+cp=       -0.3,   #esto significa no limitar la complejidad de los splits
+minsplit=  2000,     #minima cantidad de registros para que se haga el split
+minbucket= 1000,     #tamaño minimo de una hoja
+maxdepth=  4 )    #profundidad maxima del arbol
+campos.drifting <- names(modelo.drifting$variable.importance)
+campos.drifting <- setdiff(campos.drifting,c("numero_de_cliente"))
+View(dataset)
+names(modelo.drifting$variable.importance)
+View(dataset)
+setwd("~/Desktop/EyF 2022")
+dia.mes <- format(Sys.Date(),"%d%m")
+dir.create( "./exp/" )
+kaggle.folder <- paste0("KA", dia.mes)
+FIXED_PARAM$experimento  <- kaggle.folder
+FIXED_PARAM <- list()
+FIXED_PARAM$experimento  <- kaggle.folder
+folder.path <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+files.in <- list.files(folder.path, pattern = "*.csv")
+require(stringr)
+files.in <- list.files(folder.path, pattern = "*.csv")
+require(stringr)
+str_extract_all(files.in, "\KA+d{4}_d{2}")
+str_extract_all(files.in, "\\KA+d{4}_d{2}")
+unlist(str_extract_all(files.in, "\\KA+d{4}_d{2}"))
+str_extract(files.in, "\\KA+d{4}_d{2}")
+str_extract(files.in, "KA\\d{4}_\\d{2}")
+unique(str_extract(files.in, "KA\\d{4}_\\d{2}"))
+str_extract(files.in, "*_\d{2}_*")
+str_extract(files.in, "*_\\d{2}_*")
+str_extract(files.in, "+*_\\d{2}_*+")
+files.in <- list.files(folder.path, pattern = "*.csv")
+str_extract(files.in, "^.*?\\_[^\\d]*(\\d+)[^\\d]*\\_.*$")
+str_extract_all(files.in, "^.*?\\_[^\\d]*(\\d+)[^\\d]*\\_.*$")
+str_extract(files.in, "^.*?\\_[^\\d]*(\\d+)[^\\d]*\\_.*$")
+str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")
+unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)"))
+iters.runned  <- as.integers(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
+iters.runned  <- as.integer(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
+files.in <- list.files(folder.path, pattern = "*.csv")
+iters.runned  <- as.integer(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
+setwd("~/Desktop/EyF 2022")
+bayesian.opt.output <- "./exp/HT3009/HT3009.txt"
+experimentos <- fread(bayesian.opt.output)
+bayesian.opt.output <- "./exp/HT7231/HT7231.txt"
+experimentos <- fread(bayesian.opt.output)
+cantidad <- min(c(round(0.3*nrow(experimentos)),20))
+cols <-  c("num_iterations","learning_rate","feature_fraction","min_data_in_leaf","num_leaves", "iteracion")
+correr <- experimentos[order(-ganancia), head(.SD, cantidad)][,..cols]
+FIXED_PARAM <- list()
+FIXED_PARAM$experimento  <- "KA3009"
+files.in <- list.files(folder.path, pattern = "*.csv")
+folder.path <- paste0("./exp/", FIXED_PARAM$experimento, "/" )
+files.in <- list.files(folder.path, pattern = "*.csv")
+all.iters <- correr$iteracion
+iters.runned  <- as.integer(unique(str_extract(files.in, "(?<=\\_)[0-9]+(?=\\_)")))
+setdiff(all.iters, iters.runned)
+#Arbol elemental con libreria  rpart
+#Debe tener instaladas las librerias  data.table  ,  rpart  y  rpart.plot
+rm( list=ls() )
+gc()
+#cargo las librerias que necesito
+require("data.table")
+require("rpart")
+require("rpart.plot")
+#Aqui se debe poner la carpeta de la materia de SU computadora local
+setwd("~/Desktop/EyF 2022")  #Establezco el Working Directory
+#cargo el dataset donde voy a entrenar
+dataset  <- fread("./datasets/datasets_muestra252_comp2.csv")
+dataset  <- dataset[  foto_mes %in% c( 202101, 202103 ) ]
+#Arbol elemental con libreria  rpart
+#Debe tener instaladas las librerias  data.table  ,  rpart  y  rpart.plot
+rm( list=ls() )
+gc()
+#cargo las librerias que necesito
+require("data.table")
+require("rpart")
+require("rpart.plot")
+#Aqui se debe poner la carpeta de la materia de SU computadora local
+setwd("~/Desktop/EyF 2022")  #Establezco el Working Directory
+#cargo el dataset donde voy a entrenar
+dataset  <- fread("./datasets/datasets_muestra252_comp2.csv")
+View(dataset)
+unique(dataset$foto_mes)
+#Arbol elemental con libreria  rpart
+#Debe tener instaladas las librerias  data.table  ,  rpart  y  rpart.plot
+rm( list=ls() )
+gc()
+#cargo las librerias que necesito
+require("data.table")
+require("rpart")
+require("rpart.plot")
+#Aqui se debe poner la carpeta de la materia de SU computadora local
+setwd("~/Desktop/EyF 2022")  #Establezco el Working Directory
+#cargo el dataset donde voy a entrenar
+dataset  <- fread("./datasets/datasets_muestra252_comp2.csv")
+dataset  <- dataset[  foto_mes %in% c( 202103, 202105 ) ]
+#genero el modelo,  aqui se construye el arbol
+modelo.drifting  <- rpart(formula=    "foto_mes ~ . -clase_ternaria",  #quiero predecir clase_ternaria a partir del resto de las variables
+data=      dataset,  #los datos donde voy a entrenar
+xval=      0,
+cp=       -0.3,   #esto significa no limitar la complejidad de los splits
+minsplit=  2000,     #minima cantidad de registros para que se haga el split
+minbucket= 1000,     #tamaño minimo de una hoja
+maxdepth=  4 )    #profundidad maxima del arbol
+campos.drifting <- names(modelo.drifting$variable.importance)
+campos.drifting <- setdiff(campos.drifting,c("numero_de_cliente"))
+#------------------------------------------------------------------------------
+graficar_campo  <- function( campo, campo_clase, valores_clase )
+{
+#quito de grafico las colas del 5% de las densidades
+qA  <- quantile(  dataset[ foto_mes==202101 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+qB  <- quantile(  dataset[ foto_mes==202103 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+xxmin  <- pmin( qA[[1]], qB[[1]] )
+xxmax  <- pmax( qA[[2]], qB[[2]] )
+densidad_A  <- density( dataset[ foto_mes==202101 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+densidad_B  <- density( dataset[ foto_mes==202103 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+plot( densidad_A,
+col="blue",
+xlim= c( xxmin, xxmax ),
+ylim= c( 0, pmax( max(densidad_A$y), max(densidad_B$y) ) ),
+main= paste0( campo, ",   ", campo_clase, " in ",  paste( valores_clase,collapse=","))
+)
+lines(densidad_B, col="red", lty=2)
+legend(  "topright",
+legend=c("202001", "202003"),
+col=c("blue", "red"), lty=c(1,2))
+}
+#------------------------------------------------------------------------------
+dataset[ foto_mes==202101,
+clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
+# Entreno el modelo
+# utilizo los mejores hiperparametros encontrados en una Bayesian Optimizationcon 5-fold Cross Validation
+modelo  <- rpart(formula=   "clase_binaria ~ . -clase_ternaria",
+data=      dataset[ foto_mes==202101 ],  #los datos donde voy a entrenar
+xval=         0,
+cp=           -0.69,
+minsplit=    870,
+minbucket=     9,
+maxdepth=      9)
+campos.modelo  <- names( modelo$variable.importance )
+graficar_campo  <- function( campo, campo_clase, valores_clase )
+{
+#quito de grafico las colas del 5% de las densidades
+qA  <- quantile(  dataset[ foto_mes==202103 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+qB  <- quantile(  dataset[ foto_mes==202105 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+xxmin  <- pmin( qA[[1]], qB[[1]] )
+xxmax  <- pmax( qA[[2]], qB[[2]] )
+densidad_A  <- density( dataset[ foto_mes==202103 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+densidad_B  <- density( dataset[ foto_mes==202105 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+plot( densidad_A,
+col="blue",
+xlim= c( xxmin, xxmax ),
+ylim= c( 0, pmax( max(densidad_A$y), max(densidad_B$y) ) ),
+main= paste0( campo, ",   ", campo_clase, " in ",  paste( valores_clase,collapse=","))
+)
+lines(densidad_B, col="red", lty=2)
+legend(  "topright",
+legend=c("202003", "202005"),
+col=c("blue", "red"), lty=c(1,2))
+}
+dataset[ foto_mes==202103,
+clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
+# Entreno el modelo
+# utilizo los mejores hiperparametros encontrados en una Bayesian Optimizationcon 5-fold Cross Validation
+modelo  <- rpart(formula=   "clase_binaria ~ . -clase_ternaria",
+data=      dataset[ foto_mes==202103 ],  #los datos donde voy a entrenar
+xval=         0,
+cp=           -0.69,
+minsplit=    870,
+minbucket=     9,
+maxdepth=      9)
+campos.modelo  <- names( modelo$variable.importance )
+dataset[ foto_mes==202103,
+clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
+#Arbol elemental con libreria  rpart
+#Debe tener instaladas las librerias  data.table  ,  rpart  y  rpart.plot
+rm( list=ls() )
+gc()
+#cargo las librerias que necesito
+require("data.table")
+require("rpart")
+require("rpart.plot")
+#Aqui se debe poner la carpeta de la materia de SU computadora local
+setwd("~/Desktop/EyF 2022")  #Establezco el Working Directory
+#cargo el dataset donde voy a entrenar
+dataset  <- fread("./datasets/datasets_muestra252_comp2.csv")
+dataset  <- dataset[  foto_mes %in% c( 202103, 202105 ) ]
+#genero el modelo,  aqui se construye el arbol
+modelo.drifting  <- rpart(formula=    "foto_mes ~ . -clase_ternaria",  #quiero predecir clase_ternaria a partir del resto de las variables
+data=      dataset,  #los datos donde voy a entrenar
+xval=      0,
+cp=       -0.3,   #esto significa no limitar la complejidad de los splits
+minsplit=  2000,     #minima cantidad de registros para que se haga el split
+minbucket= 1000,     #tamaño minimo de una hoja
+maxdepth=  4 )    #profundidad maxima del arbol
+campos.drifting <- names(modelo.drifting$variable.importance)
+campos.drifting <- setdiff(campos.drifting,c("numero_de_cliente"))
+#------------------------------------------------------------------------------
+graficar_campo  <- function( campo, campo_clase, valores_clase )
+{
+#quito de grafico las colas del 5% de las densidades
+qA  <- quantile(  dataset[ foto_mes==202103 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+qB  <- quantile(  dataset[ foto_mes==202105 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+xxmin  <- pmin( qA[[1]], qB[[1]] )
+xxmax  <- pmax( qA[[2]], qB[[2]] )
+densidad_A  <- density( dataset[ foto_mes==202103 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+densidad_B  <- density( dataset[ foto_mes==202105 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+plot( densidad_A,
+col="blue",
+xlim= c( xxmin, xxmax ),
+ylim= c( 0, pmax( max(densidad_A$y), max(densidad_B$y) ) ),
+main= paste0( campo, ",   ", campo_clase, " in ",  paste( valores_clase,collapse=","))
+)
+lines(densidad_B, col="red", lty=2)
+legend(  "topright",
+legend=c("202003", "202005"),
+col=c("blue", "red"), lty=c(1,2))
+}
+dataset[ foto_mes==202103,
+clase_binaria :=  ifelse( clase_ternaria=="CONTINUA", "NO", "SI" ) ]
+modelo  <- rpart(formula=   "clase_binaria ~ . -clase_ternaria",
+data=      dataset[ foto_mes==202103 ],  #los datos donde voy a entrenar
+xval=         0,
+cp=           -0.69,
+minsplit=    870,
+minbucket=     9,
+maxdepth=      9)
+campos.modelo  <- names( modelo$variable.importance )
+campos.malos <- campos.drifting[campos.drifting %in%  campos.modelo]
+graficar_campo  <- function( campo, campo_clase, valores_clase )
+{
+#quito de grafico las colas del 5% de las densidades
+qA  <- quantile(  dataset[ foto_mes==202101 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+qB  <- quantile(  dataset[ foto_mes==202103 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+xxmin  <- pmin( qA[[1]], qB[[1]] )
+xxmax  <- pmax( qA[[2]], qB[[2]] )
+densidad_A  <- density( dataset[ foto_mes==202101 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+densidad_B  <- density( dataset[ foto_mes==202103 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+plot( densidad_A,
+col="blue",
+xlim= c( xxmin, xxmax ),
+ylim= c( 0, pmax( max(densidad_A$y), max(densidad_B$y) ) ),
+main= paste0( campo, ",   ", campo_clase, " in ",  paste( valores_clase,collapse=","))
+)
+lines(densidad_B, col="red", lty=2)
+legend(  "topright",
+legend=c("202001", "202003"),
+col=c("blue", "red"), lty=c(1,2))
+}
+dia.mes <- format(Sys.Date(),"%d%m")
+# dir.create( "./exp/",  showWarnings = FALSE )
+dir.create( paste0("./exp/DR",dia.mes,"/"), showWarnings = FALSE )
+setwd("./exp/DR6130/")
+pdf("densidades_drifting_campos_malos2.pdf")
+for( campo in  campos.malos )
+{
+cat( campo, "  " )
+#graficar_campo( campo, "clase_ternaria", c( "BAJA+1", "BAJA+2", "CONTINUA" ) )
+graficar_campo( campo, "clase_ternaria", c( "BAJA+1", "BAJA+2" ) )
+# graficar_campo( campo, "clase_ternaria", c( "BAJA+2" ) )
+# graficar_campo( campo, "clase_ternaria", c( "BAJA+1" ) )
+# graficar_campo( campo, "clase_ternaria", c( "CONTINUA" ) )
+}
+graficar_campo  <- function( campo, campo_clase, valores_clase )
+{
+#quito de grafico las colas del 5% de las densidades
+qA  <- quantile(  dataset[ foto_mes==202103 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+qB  <- quantile(  dataset[ foto_mes==202105 , get(campo) ] , prob= c(0.05, 0.95), na.rm=TRUE )
+xxmin  <- pmin( qA[[1]], qB[[1]] )
+xxmax  <- pmax( qA[[2]], qB[[2]] )
+densidad_A  <- density( dataset[ foto_mes==202103 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+densidad_B  <- density( dataset[ foto_mes==202105 & get(campo_clase) %in% valores_clase, get(campo) ],
+kernel="gaussian", na.rm=TRUE )
+plot( densidad_A,
+col="blue",
+xlim= c( xxmin, xxmax ),
+ylim= c( 0, pmax( max(densidad_A$y), max(densidad_B$y) ) ),
+main= paste0( campo, ",   ", campo_clase, " in ",  paste( valores_clase,collapse=","))
+)
+lines(densidad_B, col="red", lty=2)
+legend(  "topright",
+legend=c("202001", "202003"),
+col=c("blue", "red"), lty=c(1,2))
+}
+pdf("densidades_drifting_campos_malos2.pdf")
+for( campo in  campos.malos )
+{
+cat( campo, "  " )
+#graficar_campo( campo, "clase_ternaria", c( "BAJA+1", "BAJA+2", "CONTINUA" ) )
+graficar_campo( campo, "clase_ternaria", c( "BAJA+1", "BAJA+2" ) )
+# graficar_campo( campo, "clase_ternaria", c( "BAJA+2" ) )
+# graficar_campo( campo, "clase_ternaria", c( "BAJA+1" ) )
+# graficar_campo( campo, "clase_ternaria", c( "CONTINUA" ) )
+}
+sum(is.na(dataset$mv_mlimitecompra))
+dataset[ foto_mes==202105 & mv_mlimitecompra,]
+dataset[ foto_mes==202105 & get("clase_ternaria") %in% C("BAJA+1","BAJA+2"),]
+dataset[ foto_mes==202105 & get("clase_ternaria") %in% C("BAJA+1","BAJA+2"),]
+dataset[ foto_mes==202105 & get("clase_ternaria") %in% c("BAJA+1","BAJA+2"),]
+#Parametros del script
+PARAM  <- list()
+#valores posibles  "ninguno" "rank_simple" , "rank_cero_fijo" , "deflacion"
+PARAM$metodo  <- "deflacion"
+paste0("DR914_",PARAM$metodo)
