@@ -20,10 +20,14 @@ estacio <- estacio %>% group_by(ym(foto_mes)) %>% mutate(prop=cant/sum(cant))
 
 g1 <- ggplot(estacio, aes(x=ym(foto_mes), y=cant))+
   geom_line()+
-  facet_wrap(vars(clase_ternaria), scale = "free_y", nrow=1)
+  facet_wrap(vars(clase_ternaria), scale = "free_y", nrow=1)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme_light()
 
 g2 <- ggplot(estacio, aes(x=ym(foto_mes), y=prop))+
   geom_line()+
-  facet_wrap(vars(clase_ternaria), scale = "free_y", nrow=1)
+  facet_wrap(vars(clase_ternaria), scale = "free_y", nrow=1)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme_light()
 
 grid.arrange(g1, g2)
