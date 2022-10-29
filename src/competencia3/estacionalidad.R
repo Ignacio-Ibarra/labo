@@ -2,6 +2,7 @@ require(data.table)
 require(dplyr)
 require(gridExtra)
 require(ggplot2)
+require(lubridate)
 
 setwd("~/buckets/b1/")
 #Parametros del script
@@ -14,7 +15,8 @@ datos <- fread(PARAM$dataset)
 
 estacio <- datos[!foto_mes %in% c(202106,202107), .(cant = .N), by = .(foto_mes,clase_ternaria)]
 
-estacio <- estacio %>% group_by(foto_mes) %>% mutate(prop=cant/sum(cant))
+estacio <- estacio %>% group_by(ym(foto_mes)) %>% mutate(prop=cant/sum(cant))
+
 
 g1 <- ggplot(estacio, aes(x=foto_mes, y=cant))+
   geom_line()+
