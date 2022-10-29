@@ -8,4 +8,4 @@ PARAM$future <- c( 202107)
 
 datos <- fread(PARAM$dataset)
 
-datos[foto_mes!=202107, .(count = .N), by = .(foto_mes,clase_ternaria)]
+datos[!foto_mes %in% c(202106,202107), .(count = .N), by = .(foto_mes,clase_ternaria)]
