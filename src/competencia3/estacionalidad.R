@@ -8,4 +8,4 @@ PARAM$future <- c( 202107)
 
 datos <- fread(PARAM$dataset)
 
-unique(datos$foto_mes)
+datos[foto_mes!=202107, .(count = .N), by = .(foto_mes,clase_ternaria)]
