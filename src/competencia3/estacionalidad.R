@@ -1,6 +1,8 @@
 require(data.table)
 require(dplyr)
 require(gridExtra)
+require(ggplot2)
+
 setwd("~/buckets/b1/")
 #Parametros del script
 PARAM  <- list()
