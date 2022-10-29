@@ -1,7 +1,7 @@
 # Creo variables con xgb create. 
 xgbCreateFeatures <- function(params){
   
-  pre.rows <- nrows(dataset)
+  pre.rows <- nrow(dataset)
   
   gc()
   cat("XGB Features - Cantidad de Rows Inicio: ", pre.rows)
@@ -33,14 +33,14 @@ xgbCreateFeatures <- function(params){
   test.set <- as.data.table(as.data.frame(as.matrix(test.set)))
   
   union <- rbind(train.set, test.set, temp.set)
-  post.rows <- nrows(union)
+  post.rows <- nrow(union)
   cat("XGB Features - Cantidad de Rows Final : ", post.rows)
   
   if (pre.rows == post.rows){
-  union <- as.data.table(as.data.frame(as.matrix(union)))
-  union[foto_mes < 202106, clase_ternaria := clase_real]
-  union[foto_mes = 202106, clase_ternaria := clase_temp]
-  dataset <- union}
-
-    
+    union <- as.data.table(as.data.frame(as.matrix(union)))
+    union[foto_mes < 202106, clase_ternaria := clase_real]
+    union[foto_mes = 202106, clase_ternaria := clase_temp]
+    dataset <- union}
+  
+  
 }
