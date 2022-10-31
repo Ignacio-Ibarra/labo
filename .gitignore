@@ -184,6 +184,7 @@ project/target
 .vscode/settings.json
 .Rproj.user
 .Rhistory
+
 *.Rhistory
 
 
