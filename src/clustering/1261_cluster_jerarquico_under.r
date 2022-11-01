@@ -41,8 +41,8 @@ setwd(paste0( "./exp/", PARAM$experimento, "/"))   #Establezco el Working Direct
 #undersampleo continua
 #grabo los datos donde voy a hacer la optimizacion de hiperparametros
 
-sampling_total <- 1.0
-undersampling_continua <- 0.05
+sampling_total <- 0.315
+undersampling_continua <- 0.5*nrow(dataset[clase_ternaria %in% c( "BAJA+1", "BAJA+2" )])/nrow(dataset[clase_ternaria=="CONTINUA"])
 
 set.seed( 123456 )
 dataset[ foto_mes>=202006  & foto_mes<=202105 , azar_sampling := runif( nrow(dataset[foto_mes>=202006  & foto_mes<=202105]) ) ]
@@ -51,11 +51,10 @@ set.seed( 654321 )
 dataset[ foto_mes>=202006  & foto_mes<=202105 , azar_under := runif( nrow(dataset[foto_mes>=202006  & foto_mes<=202105]) ) ]
 
 dataset[  , analysis_fold:= 0L ]
-dataset[ foto_mes %in% foto_mes>=202006  & foto_mes<=202105 & 
+dataset[ foto_mes>=202006  & foto_mes<=202105 & 
            ( azar_sampling <= sampling_total ) &
            ( azar_under <= undersampling_continua | clase_ternaria %in% c( "BAJA+1", "BAJA+2" ) )
          , analysis_fold := 1L ]
-
 
 #quito los nulos para que se pueda ejecutar randomForest,  Dios que algoritmo prehistorico ...
 dataset  <- na.roughfix( dataset )
@@ -73,10 +72,13 @@ campos_buenos  <- c( "ctrx_quarter", "cpayroll_trx", "mcaja_ahorro", "mtarjeta_v
                      "mcomisiones", "Visa_cconsumos", "ccomisiones_otras", "Master_status", "mtransferencias_emitidas",
                      "mpagomiscuentas")
 
+data_under <- dataset[  analysis_fold==1 ]
+data_under[,.N, clase_ternaria]
 
-
+rm(dataset)
+gc()
 #Ahora, a esperar mucho con este algoritmo del pasado que NO correr en paralelo, patetico
-modelo  <- randomForest( x= dataset[  analysis_fold==1, campos_buenos, with=FALSE ], 
+modelo  <- randomForest( x= data_under[, campos_buenos, with=FALSE], 
                          y= NULL, 
                          ntree= 1000, #se puede aumentar a 10000
                          proximity= TRUE, 
@@ -88,7 +90,7 @@ hclust.rf  <- hclust( as.dist ( 1.0 - modelo$proximity),  #distancia = 1.0 - pro
 
 
 #imprimo un pdf con la forma del cluster jerarquico
-pdf( "cluster_jerarquico.pdf" )
+pdf( "cluster_jerarquico_under.pdf" )
 plot( hclust.rf )
 dev.off()
 
@@ -101,31 +103,20 @@ while(  h>0  &  !( distintos >=6 & distintos <=7 ) )
 {
   h <- h - 1 
   rf.cluster  <- cutree( hclust.rf, h)
-
-  dataset[  , cluster2 := NULL ]
-  dataset[  , cluster2 := rf.cluster ]
-
-  distintos  <- nrow( dataset[  , .N,  cluster2 ] )
+  
+  data_under[  , cluster2 := NULL ]
+  data_under[  , cluster2 := rf.cluster ]
+  
+  distintos  <- nrow( data_under[  , .N,  cluster2 ] )
   cat( distintos, " " )
 }
 
 #en  dataset,  la columna  cluster2  tiene el numero de cluster
 #sacar estadicas por cluster
 
-dataset[  , .N,  cluster2 ]  #tamaño de los clusters
+#dataset[  , .N,  cluster2 ]  #tamaño de los clusters
 
 #grabo el dataset en el bucket, luego debe bajarse a la PC y analizarse
-fwrite( dataset,
-        file= "cluster_de_bajas.txt",
+fwrite( data_under,
+        file= "cluster_de_bajas_under.txt",
         sep= "\t" )
-
-
-#ahora a mano veo los centroides de los 7 clusters
-#esto hay que hacerlo para cada variable,
-#  y ver cuales son las que mas diferencian a los clusters
-#esta parte conviene hacerla desde la PC local, sobre  cluster_de_bajas.txt
-
-dataset[  , mean(ctrx_quarter),  cluster2 ]  #media de la variable  ctrx_quarter
-dataset[  , mean(mtarjeta_visa_consumo),  cluster2 ]
-dataset[  , mean(mcuentas_saldo),  cluster2 ]
-dataset[  , mean(chomebanking_transacciones),  cluster2 ]
