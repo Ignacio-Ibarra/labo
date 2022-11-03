@@ -84,7 +84,7 @@ nclust <- eval_clusts(hclust.rf, 20, data_under[, campos_buenos, with=FALSE])
 data_under$clusters <- cutree(hclust.rf, nclust)
 
 fwrite(data_under, 
-       paste0("data_under_",nclust,"_clusters.txt"),
+       paste0("data_under_",PARAM$cluster.opt,"_",nclust,"_clusters.txt"),
        sep = "\t")
 
 
